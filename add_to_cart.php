@@ -41,15 +41,17 @@ if ($qty > $product['quantity']) {
     exit();
 }
 
-// Ensure tbl_orders exists
+// Ensure tbl_orders exists (use a compatible schema: support both customerID and user_id)
 $createOrders = "CREATE TABLE IF NOT EXISTS tbl_orders (
     order_id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    user_id INT NOT NULL,
+    customerID INT NULL,
+    user_id INT NULL,
     product_id INT NOT NULL,
     quantity INT NOT NULL DEFAULT 1,
     price DECIMAL(10,2) NOT NULL,
-    status ENUM('active','purchased','removed') NOT NULL DEFAULT 'active',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    total DECIMAL(10,2) AS (quantity * price) STORED,
+    status ENUM('active','purchased','removed','cancelled','Logged In') NOT NULL DEFAULT 'active',
+    added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4";
 mysqli_query($conn, $createOrders);

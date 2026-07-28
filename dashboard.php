@@ -51,21 +51,19 @@
         }
     }
 
-    $cartCountSql = "SELECT COUNT(*) AS total FROM tbl_orders WHERE $cartUserColumn = ? AND status = ?";
+    // Count cart items. Support both new ('active') and legacy ('Logged In') status values.
+    $cartCountSql = "SELECT COUNT(*) AS total FROM tbl_orders WHERE $cartUserColumn = ? AND (status = 'active' OR status = 'Logged In')";
     $cartCountStmt = $conn->prepare($cartCountSql);
-
-    $status = 'Logged In';
-
-    $cartCountStmt->bind_param('is', $cartUserValue, $status);
-    $cartCountStmt->execute();
-
-    $cartCountResult = $cartCountStmt->get_result();
-    if ($cartCountResult) {
-        $cartCountRow = $cartCountResult->fetch_assoc();
-        $cartCount = intval($cartCountRow['total'] ?? 0);
+    if ($cartCountStmt) {
+        $cartCountStmt->bind_param('i', $cartUserValue);
+        $cartCountStmt->execute();
+        $cartCountResult = $cartCountStmt->get_result();
+        if ($cartCountResult) {
+            $cartCountRow = $cartCountResult->fetch_assoc();
+            $cartCount = intval($cartCountRow['total'] ?? 0);
+        }
+        $cartCountStmt->close();
     }
-
-    $cartCountStmt->close();
 
     $shopCategories = [];
     $categoryResult = mysqli_query($conn, "SELECT category_id, categoryName FROM tbl_categories ORDER BY categoryName ASC");
@@ -370,18 +368,27 @@
                                                 $productId   = intval($product['product_id']);
                                                 $productName = htmlspecialchars($product['product_name'] ?? 'Product');
                                                 $categoryName = htmlspecialchars($product['categoryName'] ?? 'Uncategorized');
-                                                $imagePath   = htmlspecialchars($product['image_path'] ?? '');
+                                                $rawImagePath = trim($product['image_path'] ?? '');
+                                                $defaultImage = 'uploads/LOGO.png';
+                                                $imagePath = $defaultImage;
+                                                if ($rawImagePath !== '') {
+                                                    $candidatePath = $rawImagePath;
+                                                    $fileCheckPath = $candidatePath;
+                                                    if (!file_exists($fileCheckPath)) {
+                                                        $fileCheckPath = __DIR__ . '/' . $candidatePath;
+                                                    }
+                                                    if (file_exists($fileCheckPath)) {
+                                                        $imagePath = $candidatePath;
+                                                    }
+                                                }
+                                                $imagePath = htmlspecialchars($imagePath);
                                                 $price       = floatval($product['price'] ?? 0);
                                                 $quantity    = intval($product['quantity'] ?? 0);
                                                 $isLowStock  = $quantity > 0 && $quantity <= 10;
                                             ?>
                                             <article class="group bg-white border border-gray-100 rounded-3xl overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-1 transition">
                                                 <div class="relative h-56 bg-gray-100 overflow-hidden">
-                                                    <?php if ($imagePath !== ''): ?>
-                                                        <img src="<?php echo $imagePath; ?>" alt="<?php echo $productName; ?>" class="h-full w-full object-cover group-hover:scale-105 transition duration-500">
-                                                    <?php else: ?>
-                                                        <div class="h-full w-full flex items-center justify-center text-gray-300"><i class="fas fa-image text-5xl"></i></div>
-                                                    <?php endif; ?>
+                                                    <img src="<?php echo $imagePath; ?>" alt="<?php echo $productName; ?>" class="h-full w-full object-cover group-hover:scale-105 transition duration-500">
                                                     <span class="absolute left-3 top-3 bg-orange-500 text-white text-xs font-bold px-3 py-1 rounded-full">Mall</span>
                                                     <?php if ($isLowStock): ?>
                                                         <span class="absolute right-3 top-3 bg-red-500 text-white text-xs font-bold px-3 py-1 rounded-full">Low stock</span>

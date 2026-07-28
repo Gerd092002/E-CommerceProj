@@ -74,7 +74,22 @@ if (mysqli_num_rows($result) > 0) {
     while ($row = mysqli_fetch_assoc($result)) {
       
         
-        $imagePath = htmlspecialchars($row['image_path']);
+        $rawImagePath = trim($row['image_path'] ?? '');
+        $defaultImage = 'uploads/LOGO.png';
+        $imagePath = $defaultImage;
+
+        if ($rawImagePath !== '') {
+            $candidatePath = $rawImagePath;
+            $fileCheckPath = $candidatePath;
+            if (!file_exists($fileCheckPath)) {
+                $fileCheckPath = __DIR__ . '/../' . $candidatePath;
+            }
+            if (file_exists($fileCheckPath)) {
+                $imagePath = $candidatePath;
+            }
+        }
+
+        $imagePath = htmlspecialchars($imagePath);
         $productId = intval($row['product_id']);
         $productName = htmlspecialchars($row['product_name']);
         $categoryName = htmlspecialchars($row['categoryName']);
